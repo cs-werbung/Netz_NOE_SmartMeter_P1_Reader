@@ -114,8 +114,7 @@ def extract_frames(buf: bytearray):
     """
     """Check the header: 
         byte 1 must equal byte 2 (L twice), 
-        byte 3 must be 0x68, and L must be at least 30 
-        as one message contains at least 30 bytes as 26 bytes are just metadata (rules out short frames and random 0x68 bytes). 
+        byte 3 must be 0x68, and L must be at least 6  
         If not, it was a false start: drop one byte and search again.
     """
     """
@@ -146,7 +145,7 @@ def extract_frames(buf: bytearray):
         length = buf[1]
 
         # Check for the complete header
-        if buf[2] != length or buf[3] != 0x68 or length < 30:
+        if buf[2] != length or buf[3] != 0x68 or length < 6:
             del buf[0]                      # false start byte
             continue
 
