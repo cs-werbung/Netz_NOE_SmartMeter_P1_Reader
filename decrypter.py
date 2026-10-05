@@ -60,7 +60,12 @@ load_dotenv()
 
 PORT = os.getenv('PORT')
 BAUD = int(os.getenv('BAUD', '2400'))     # Netz NÖ spec: fixed 2400 baud
-KEY = ba.unhexlify(os.getenv('KEY'))
+try:
+    KEY = ba.unhexlify((os.getenv('KEY') or '').strip())
+except ba.Error:
+    KEY = b''
+if len(KEY) != 16:
+    raise SystemExit('KEY in .env must be the 32 hex digit key from Netz NÖ')
 LOGLEVEL = os.getenv('LOGLEVEL', 'WARNING')
 
 MQTT_USER = os.getenv('MQTT_USER')
@@ -114,7 +119,9 @@ def extract_frames(buf: bytearray):
     """
     """Check the header: 
         byte 1 must equal byte 2 (L twice), 
-        byte 3 must be 0x68, and L must be at least 6  
+        byte 3 must be 0x68, and L must be at least 6
+        (C, A, CI, 2 transport bytes + data). Must stay small: the 2nd segment
+        of a Netz NÖ telegram has only L=20 (26 bytes total). 
         If not, it was a false start: drop one byte and search again.
     """
     """

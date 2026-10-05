@@ -14,8 +14,8 @@ Topic: `MQTT_TOPIC` (e.g. `/home/smartmeter/vals`), one message every 5 seconds:
 
 ```json
 {"kWh_in": 47801.696, "kWh_out": 35.41, "pwr_in": 20, "pwr_out": 0,
- "v_l1": 235.6, "v_l2": 235.1, "v_l3": 236.1,
- "c_l1": 2.83, "c_l2": 3.25, "c_l3": 3.25, "pf": 0.009}
+  "v_l1": 235.6, "v_l2": 235.1, "v_l3": 236.1,
+  "c_l1": 2.83, "c_l2": 3.25, "c_l3": 3.25, "pf": 0.009}
 ```
 
 | Key | OBIS | Meaning | Unit |
@@ -54,12 +54,29 @@ spikes in the Home Assistant energy statistics (e.g. after a reboot).
 
 ## Installation
 
+Requires Python 3.9 or newer (Raspberry Pi OS Bullseye, Bookworm, Trixie).
+
 ```bash
+sudo apt update
+sudo apt install -y git python3-venv
 git clone https://github.com/cs-werbung/Netz_NOE_SmartMeter_P1_Reader.git
 cd Netz_NOE_SmartMeter_P1_Reader
-pip install -r requirements.txt
+python3 -m venv venv                       # virtual environment in ./venv
+venv/bin/pip install --upgrade pip
+venv/bin/pip install -r requirements.txt
 cp .env.example .env
-nano .env                       # enter KEY, MQTT settings
+nano .env                                  # enter KEY, MQTT settings
+venv/bin/python decrypter.py               # test run, stop with Ctrl+C
+```
+
+Why a virtual environment: since Debian 12 (Raspberry Pi OS Bookworm), `pip install`
+into the system Python fails with `error: externally-managed-environment`. The venv
+keeps the libraries separate from the system; always start the scripts with
+`venv/bin/python` (no `activate` needed). Do **not** use `--break-system-packages`.
+
+Updating the libraries later:
+```bash
+venv/bin/pip install --upgrade -r requirements.txt
 ```
 
 - The **KEY** (decryption key, 32 hex digits) must be requested from Netz NÖ
@@ -68,7 +85,7 @@ nano .env                       # enter KEY, MQTT settings
   ```bash
   sudo touch /var/log/decrypter.log && sudo chown pi:pi /var/log/decrypter.log
   ```
-- The user needs access to the serial port: `sudo usermod -aG dialout pi`
+- The user needs access to the serial port: `sudo usermod -aG dialout pi` (log out and in again)
 
 ### Configuration (.env)
 
@@ -109,7 +126,7 @@ Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/Netz_NOE_SmartMeter_P1_Reader
-ExecStart=/usr/bin/python3 /home/pi/Netz_NOE_SmartMeter_P1_Reader/decrypter.py
+ExecStart=/home/pi/Netz_NOE_SmartMeter_P1_Reader/venv/bin/python /home/pi/Netz_NOE_SmartMeter_P1_Reader/decrypter.py
 Restart=always
 RestartSec=30s
 
@@ -117,7 +134,8 @@ RestartSec=30s
 WantedBy=multi-user.target
 ```
 
-`WorkingDirectory` must be the folder containing `.env`.
+`WorkingDirectory` must be the folder containing `.env`; `ExecStart` must use the Python
+of the venv (`venv/bin/python`), otherwise the libraries are not found.
 
 ```bash
 sudo systemctl daemon-reload
@@ -134,7 +152,7 @@ decrypted telegrams (the key is never printed). Stop the service first:
 
 ```bash
 sudo systemctl stop smartmeterd
-python3 p1_capture.py              # optional: python3 p1_capture.py --seconds 30
+venv/bin/python p1_capture.py      # optional: --seconds 30
 sudo systemctl start smartmeterd
 ```
 
